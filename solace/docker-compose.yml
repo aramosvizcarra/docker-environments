@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  solace-broker:
+    image: solace/solace-pubsub-standard:latest
+    container_name: solace-broker
+    ports:
+      - "8080:8080"   # Web interface
+      - "55555:55555" # Messaging port
+      - "8008:8008"   # WebSocket messaging
+    environment:
+      - username_admin_globalaccesslevel=admin
+      - username_admin_password=admin
+      - system_scaling_maxconnectioncount=100
+    volumes:
+      - solace-data:/var/lib/solace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health-check/guaranteed-messaging"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  solace-config:
+    image: curlimages/curl:latest
+    depends_on:
+      solace-broker:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Solace Broker...';
+        sleep 10;
+        curl -u admin:admin -X POST http://solace-broker:8080/SEMP/v2/config/msgVpns/default/queues
+        -H 'Content-Type: application/json'
+        -d '{
+              \"queueName\": \"TEST_QUEUE\",
+              \"egressEnabled\": true,
+              \"ingressEnabled\": true,
+              \"permission\": \"consume\",
+              \"accessType\": \"exclusive\"
+            }' && 
+        curl -u admin:admin -X POST http://solace-broker:8080/SEMP/v2/config/msgVpns/default/queues/TEST_QUEUE/subscriptions
+        -H 'Content-Type: application/json'
+        -d '{
+              \"subscriptionTopic\": \"TEST_SUB\"
+            }';
+        echo 'Queue and Subscription configured.'
+      "
+
+volumes:
+  solace-data:
