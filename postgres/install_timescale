@@ -1,0 +1,17 @@
+apt install postgresql-common
+
+'' yes | sh /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+
+sh -c "echo 'deb [signed-by=/usr/share/keyrings/timescale.keyring] https://packagecloud.io/timescale/timescaledb/debian/ bullseye main' > /etc/apt/sources.list.d/timescaledb.list"
+
+wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | gpg --dearmor -o /usr/share/keyrings/timescale.keyring
+
+apt update
+
+apt install timescaledb-2-postgresql-12
+
+apt install -y timescaledb-tools
+
+sh -c 'echo "shared_preload_libraries = 'timescaledb'" >> /etc/postgresql/12/main/postgresql.conf'
+
+service postgresql restart
